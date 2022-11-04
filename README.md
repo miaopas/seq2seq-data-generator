@@ -1,1 +1,1 @@
-# seq2seq-data-generator
+Examples and descriptions are in description.ipynb

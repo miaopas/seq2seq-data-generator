@@ -4,6 +4,8 @@ from sklearn.metrics.pairwise import rbf_kernel
 import numpy as np
 from math import exp, sqrt
 import random   
+import matplotlib.pyplot as plt
+
 def _generate_gaussian(num, seq_length, dim):
     xs = np.arange(seq_length)*0.1
     mean = [0 for _ in xs]
@@ -110,7 +112,7 @@ class LFGenGenerator(AbstractGenerator):
         dt = self.config['dt']
         rho = np.array([[self.rho(t*dt,s*dt) for s in range(path_len)] for t in range(out_len)])
 
-        return np.einsum('bsd,ts->btd',inputs,rho) # A simpler way of the following summation.
+        return np.einsum('bsd,tsd->bt',inputs,rho)[...,None] # A simpler way of the following summation.
 
         # for t in range(0, out_len):
         #     output = 0
@@ -120,56 +122,99 @@ class LFGenGenerator(AbstractGenerator):
         #     outputs.append(output)
         # return np.asarray(outputs).transpose(1, 0, 2)
 
+    def plot_rho(self, d=0, causal=False):
+        # return an array which can be used to plot rho
+        # if input is multidimension, d specifies which dimension to plot.
+        # If is causal then plot rho(t-s).
+
+        out_len = self.config['out_len']
+        dt = self.config['dt']
+        rho = np.array([[self.rho(t*dt,s*dt) for s in range(out_len)] for t in range(out_len)])
+
+
+        if causal:
+            rho = np.flip(rho[...,d][-1])
+            return rho
+        else:
+            return rho[...,d]
+        
+
+
+
 
 class Shift(LFGenGenerator):
     def get_default_config(self):
         config = super().get_default_config()
-        config.update({'shift':2})
+        config.update({'dt':1, 'shift':[2]})
+        
         return config
 
     def rho(self, t, s):
-        if t-s == self.config['shift']:
-            return 1.0
-        else:
-            return 0.0
+        assert self.config['input_dim'] == len(self.config['shift']), "dimension not match"
 
+        rho = []
+        for k in self.config['shift']:
+            if t-s == k:
+                rho.append(1.0)
+            else:
+                rho.append(0.0)
 
-class LinearRNNGroundTruth(LFGenGenerator):
-    """
-    The ground truth for a linear RNN. 
-    """
-    name = 'LinearRNNGroundTruth'
+        return rho
 
+class Exponential(LFGenGenerator):
     def get_default_config(self):
         config = super().get_default_config()
+        config.update({'dt':0.1, 'lambda':[0.5]})
+        
         return config
 
-    def rho(self, t,s):
+    def rho(self, t, s):
+        assert self.config['input_dim'] == len(self.config['lambda']), "dimension not match"
 
-        if s <=t:
-            return 0.5**(t-s)+ 0.6**(t-s)
+        if s <= t:
+            return np.exp(-np.array(self.config['lambda']) * (t-s))
         else:
-            return 0
+            return np.zeros(self.config['input_dim'])
 
-        
 
 
 class TwoPart(LFGenGenerator):
     """
-    The ground truth for a linear RNN. 
+    Consists of two peak, centers describe center of peak, sigmas are size of each peak.
     """
     def get_default_config(self):
         config = super().get_default_config()
-        config.update({'centers': [6, 25],
-                       'sigmas':[0.5, 0.5]})
+        config.update({'centers': [[1.5, 4]],
+                       'sigmas':[[4, 4]],
+                       'path_len':64})
         return config
 
 
     def rho(self, t,s):
         res = 0
+
         for center, sigma in zip(self.config['centers'], self.config['sigmas']):
-            res += exp(-(s-center)**2 * sigma)/4
-        res += 0.5
+            for cen, sig in zip(center, sigma):
+                res += exp(-((t-s)-cen)**2 * sig)
+
+        return [res]
+        
+
+class ExpPeak(LFGenGenerator):
+
+    def get_default_config(self):
+        config = super().get_default_config()
+        config.update({'lambda': [1],
+                        'center': [8],
+                       'sigma':[10],
+                       'path_len':128})
+        return config
+
+
+    def rho(self, t,s):
+        res = []
+
+        for lam, center, sigma in zip(self.config['lambda'], self.config['centers'], self.config['sigmas']):
+            res.append(np.exp(-np.array(lam) * (t-s)) + exp(-((t-s)-center)**2 * sigma))
 
         return res
-        
