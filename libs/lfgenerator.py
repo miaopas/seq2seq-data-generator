@@ -1,18 +1,11 @@
 import numpy as np
 import pickle
-from sklearn.metrics.pairwise import rbf_kernel
 import numpy as np
 from math import exp, sqrt
 import random   
 import matplotlib.pyplot as plt
 
-def _generate_gaussian(num, seq_length, dim):
-    xs = np.arange(seq_length)*0.1
-    mean = [0 for _ in xs]
-    gram = rbf_kernel(xs[:,np.newaxis], gamma=0.5)
-        
-    ys = np.random.multivariate_normal(mean, gram, size=(num,dim))
-    return ys.transpose(0,2,1)
+
 
 
 
@@ -44,10 +37,8 @@ class AbstractGenerator(object):
         """
         return {
             'input_dim': 1,
-            'output_dim': 1,
             'data_num': 128,
             'path_len': 32,
-            'only_terminal': False
         }
 
     def generate_inputs(self, data_num, path_len):
@@ -133,8 +124,9 @@ class LFGenGenerator(AbstractGenerator):
 
 
         if causal:
+            x = np.arange(0,dt*out_len, dt)
             rho = np.flip(rho[...,d][-1])
-            return rho
+            return (x, rho)
         else:
             return rho[...,d]
         
@@ -172,7 +164,7 @@ class Exponential(LFGenGenerator):
         assert self.config['input_dim'] == len(self.config['lambda']), "dimension not match"
 
         if s <= t:
-            return np.exp(-np.array(self.config['lambda']) * (t-s))
+            return np.exp(-np.array(self.config['lambda']) * (t-s)/self.config['dt'])
         else:
             return np.zeros(self.config['input_dim'])
 
