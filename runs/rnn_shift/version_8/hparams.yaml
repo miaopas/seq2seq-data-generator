@@ -1,0 +1,4 @@
+hid_dim: 32
+input_dim: 1
+optim: Adam
+output_dim: 1
