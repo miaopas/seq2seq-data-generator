@@ -90,3 +90,21 @@ def shift_rnn():
         pickle.dump(res, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
+def train_exp():
+    
+    hid_dim = 12
+    model = LinearRNNModel(hid_dim,1,1)
+    generator = Exponential({'input_dim':1, 'path_len':128 ,'data_num':10000})
+    
+    
+
+    x, y = generator.generate()
+
+    permuted = x.copy()
+    permuted[:5] = x[-5:]
+    permuted[-5:] = x[:5]
+
+    x = permuted
+    early_stop_callback = EarlyStopping(monitor="train_loss",min_delta=1e-10, patience=3, verbose=False, mode="min")
+    train_model('exp', model, x, y, 0.8, epochs=400, devices=4, call_backs=[]) 
+

@@ -197,8 +197,8 @@ class ExpPeak(LFGenGenerator):
     def get_default_config(self):
         config = super().get_default_config()
         config.update({'lambda': [1],
-                        'center': [8],
-                       'sigma':[10],
+                        'centers': [8],
+                       'sigmas':[10],
                        'path_len':128})
         return config
 
@@ -206,7 +206,10 @@ class ExpPeak(LFGenGenerator):
     def rho(self, t,s):
         res = []
 
-        for lam, center, sigma in zip(self.config['lambda'], self.config['centers'], self.config['sigmas']):
-            res.append(np.exp(-np.array(lam) * (t-s)) + exp(-((t-s)-center)**2 * sigma))
+        if s <= t:
+            for lam, center, sigma in zip(self.config['lambda'], self.config['centers'], self.config['sigmas']):
+                res.append(np.exp(-np.array(lam) * (t-s)) + exp(-((t-s)-center)**2 * sigma))
+        else:
+            res.append(0)
 
         return res
