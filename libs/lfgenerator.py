@@ -187,7 +187,8 @@ class TwoPart(LFGenGenerator):
 
         for center, sigma in zip(self.config['centers'], self.config['sigmas']):
             for cen, sig in zip(center, sigma):
-                res += exp(-((t-s)-cen)**2 * sig)
+                if s<=t:
+                    res += exp(-((t-s)-cen)**2 * sig)
 
         return [res]
         
