@@ -50,7 +50,7 @@ def shift_gen(num_per_para):
         para['memory'] = memory
 
         # write data summary
-        save_summary(para, 'Data//Shift', 'shift'+str(int(shift)))
+        save_summary(para, shiftdir, 'shift'+str(int(shift)))
 
 
 
