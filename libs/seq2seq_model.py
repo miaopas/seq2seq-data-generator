@@ -1,8 +1,9 @@
 import pytorch_lightning as pl
 import torch
 from torch import nn
-from libs.layers import LinearRNN
-
+from libs.layers import LinearRNN, ComplexLinearRNN
+from libs.s4d import S4D
+from libs.s4 import S4
 
 class Seq2SeqModel(pl.LightningModule):
     def __init__(self, loss=nn.MSELoss(), optim='Adam'):
@@ -85,5 +86,53 @@ class LinearRNNModel(Seq2SeqModel):
 
     def forward(self, x):
         y = self.rnn(x)
+
+        return y
+    
+class ComplexLinearRNNModel(Seq2SeqModel):
+    def __init__(self, hid_dim, input_dim, output_dim):
+        super().__init__()
+        self.rnn = ComplexLinearRNN(input_dim=input_dim, output_dim=output_dim, hid_dim=hid_dim)
+
+
+    def forward(self, x):
+        y = self.rnn(x)
+
+        return y
+    
+
+class S4DModel(Seq2SeqModel):
+    def __init__(self, hid_dim, output_dim):
+        super().__init__()
+        self.rnn = S4D(hid_dim)
+        self.output = nn.Linear(hid_dim, output_dim)
+
+    def forward(self, x):
+        # Input (B,L,H)
+
+        x = x.permute(0,2,1)
+        # (B,H,L)
+        y = self.rnn(x)[0]
+        y = y.permute(0,2,1)
+
+        y = self.output(y)
+
+        return y
+    
+class S4Model(Seq2SeqModel):
+    def __init__(self, hid_dim, output_dim):
+        super().__init__()
+        self.rnn = S4(hid_dim)
+        self.output = nn.Linear(hid_dim, output_dim)
+
+    def forward(self, x):
+        # Input (B,L,H)
+
+        x = x.permute(0,2,1)
+        # (B,H,L)
+        y = self.rnn(x)[0]
+        y = y.permute(0,2,1)
+
+        y = self.output(y)
 
         return y

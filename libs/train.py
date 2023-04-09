@@ -5,13 +5,14 @@ from pytorch_lightning.strategies import DDPStrategy
 from pytorch_lightning.loggers import TensorBoardLogger
 import os
 import pickle
-from libs.seq2seq_model import RNNModel, LinearRNNModel
+from libs.seq2seq_model import RNNModel, LinearRNNModel, ComplexLinearRNNModel
 from libs.lfgenerator import Exponential
 from math import floor
 from datetime import datetime
 from ml_collections import FrozenConfigDict
 from libs.lfgenerator import Shift
 import numpy as np
+from libs.seq2seq_model import S4DModel, S4Model
 
 def train_model(name, model, input, output, train_test_split, epochs=300, batch_size=128, check_point_monitor='valid_loss', devices=4, call_backs=None):
     """_summary_
@@ -26,9 +27,9 @@ def train_model(name, model, input, output, train_test_split, epochs=300, batch_
     if input is not None:
     # If input not provided then skip this part
         if not isinstance(input, torch.Tensor):
-            input = torch.tensor(input, dtype=torch.float32)
+            input = torch.tensor(input, dtype=torch.float64)
         if not isinstance(output, torch.Tensor):
-            output = torch.tensor(output, dtype=torch.float32)
+            output = torch.tensor(output, dtype=torch.float64)
 
         dataset = torch.utils.data.TensorDataset(input, output)
         total = len(dataset)
@@ -56,7 +57,7 @@ def train_model(name, model, input, output, train_test_split, epochs=300, batch_
         trainer = Trainer(accelerator="gpu", 
                     devices=[3],
                     max_epochs=epochs,
-                    precision=32,
+                    precision=64,
                     logger=TensorBoardLogger("runs", name=name),
                     callbacks=default_callbacks)
     else:
@@ -64,7 +65,7 @@ def train_model(name, model, input, output, train_test_split, epochs=300, batch_
                     devices=devices,
                     strategy=DDPStrategy(find_unused_parameters=False),
                     max_epochs=epochs,
-                    precision=32,
+                    precision=64,
                     logger=TensorBoardLogger("runs", name=name),
                     callbacks=default_callbacks)
 
@@ -77,7 +78,7 @@ def shift_rnn():
     res = []
     for s in shifts:
         hid_dim = 32
-        model = LinearRNNModel(hid_dim,1,1)
+        model = ComplexLinearRNNModel(hid_dim,1,1)
         generator = Shift({'input_dim':1, 'path_len':128 ,'shift':[s], 'data_num':100000})
 
         x, y = generator.generate()
@@ -89,6 +90,24 @@ def shift_rnn():
     with open('res.pickle', 'wb') as handle:
         pickle.dump(res, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
+
+def shift_rnn_complex():
+    shifts = [100]
+    res = []
+    for s in shifts:
+        hid_dim = 32
+        model = LinearRNNModel(hid_dim,1,1)
+        generator = Shift({'input_dim':1, 'path_len':128 ,'shift':[s], 'data_num':100000})
+
+        x, y = generator.generate()
+        # early_stop_callback = EarlyStopping(monitor="train_loss",min_delta=1e-10, patience=3, verbose=False, mode="min")
+        # res.append(train_model('rnn_shift', model, x, y, 0.8, epochs=400, devices=4, call_backs=[early_stop_callback]) )
+        res.append(train_model('rnn_shift', model, x, y, 0.8, epochs=400, devices=4, call_backs=[]) )
+
+    import pickle
+
+    with open('res.pickle', 'wb') as handle:
+        pickle.dump(res, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 def train_exp():
     
@@ -108,3 +127,43 @@ def train_exp():
     early_stop_callback = EarlyStopping(monitor="train_loss",min_delta=1e-10, patience=3, verbose=False, mode="min")
     train_model('exp', model, x, y, 0.8, epochs=400, devices=4, call_backs=[]) 
 
+
+
+
+def shift_s4d():
+    shifts = [1]
+    res = []
+    for s in shifts:
+        hid_dim = 32
+        model = S4DModel(hid_dim=hid_dim,output_dim=1)
+        generator = Shift({'input_dim':1, 'path_len':5 ,'shift':[s], 'data_num':100000})
+
+        x, y = generator.generate()
+        # early_stop_callback = EarlyStopping(monitor="train_loss",min_delta=1e-10, patience=3, verbose=False, mode="min")
+        # res.append(train_model('rnn_shift', model, x, y, 0.8, epochs=400, devices=4, call_backs=[early_stop_callback]) )
+        res.append(train_model('s4d_shift', model, x, y, 0.8, epochs=400, devices=1, call_backs=[]) )
+
+    import pickle
+
+    with open('res.pickle', 'wb') as handle:
+        pickle.dump(res, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+
+def shift_s4():
+    shifts = [30]
+    res = []
+    for s in shifts:
+        hid_dim = 32
+        model = S4Model(hid_dim=hid_dim,output_dim=1)
+        generator = Shift({'input_dim':1, 'path_len':128 ,'shift':[s], 'data_num':100000})
+
+        x, y = generator.generate()
+        # early_stop_callback = EarlyStopping(monitor="train_loss",min_delta=1e-10, patience=3, verbose=False, mode="min")
+        # res.append(train_model('rnn_shift', model, x, y, 0.8, epochs=400, devices=4, call_backs=[early_stop_callback]) )
+        res.append(train_model('s4d_shift', model, x, y, 0.8, epochs=400, devices=1, call_backs=[]) )
+
+    import pickle
+
+    with open('res.pickle', 'wb') as handle:
+        pickle.dump(res, handle, protocol=pickle.HIGHEST_PROTOCOL)

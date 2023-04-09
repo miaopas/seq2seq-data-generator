@@ -1,3 +1,3 @@
-from libs.train import shift_rnn
+from libs.train import *
 
-shift_rnn()
+shift_s4()
