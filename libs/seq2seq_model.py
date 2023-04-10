@@ -2,14 +2,16 @@ import pytorch_lightning as pl
 import torch
 from torch import nn
 from libs.layers import LinearRNN, ComplexLinearRNN
-from libs.s4d import S4D
-from libs.s4 import S4
+# from libs.s4d import S4D
+# from libs.s4 import S4
 
 class Seq2SeqModel(pl.LightningModule):
-    def __init__(self, loss=nn.MSELoss(), optim='Adam'):
+    # def __init__(self, loss=nn.MSELoss(), optim='Adam'):
+    def __init__(self, config):
         super().__init__() 
-        self.loss = loss #############
-        self.optim = optim
+        self.loss = config['loss'] #############
+        self.optim = config['optim']
+        self.lr = config['lr']
         self.save_hyperparameters(ignore=['loss'])
 
     def forward(self, x):
@@ -17,11 +19,11 @@ class Seq2SeqModel(pl.LightningModule):
 
     def configure_optimizers(self):
         if self.optim == 'Adam':
-            optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+            optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         elif self.optim == 'SGD':
-            optimizer = torch.optim.SGD(self.parameters(), lr=1e-3)
+            optimizer = torch.optim.SGD(self.parameters(), lr=self.lr)
         else:
-            optimizer = torch.optim.SparseAdam(self.parameters(), lr=1e-3)
+            optimizer = torch.optim.SparseAdam(self.parameters(), lr=self.lr)
 
         scheduler = {
                         "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer), 
@@ -79,9 +81,10 @@ class RNNModel(Seq2SeqModel):
                         param.data.fill_(0)
 
 class LinearRNNModel(Seq2SeqModel):
-    def __init__(self, hid_dim, input_dim, output_dim):
-        super().__init__()
-        self.rnn = LinearRNN(input_dim=input_dim, output_dim=output_dim, hid_dim=hid_dim)
+    # def __init__(self, hid_dim, input_dim, output_dim):
+    def __init__(self, config):
+        super().__init__(config)
+        self.rnn = LinearRNN(input_dim=config['input_dim'], output_dim=config["output_dim"], hid_dim=config["hid_dim"])
 
 
     def forward(self, x):
@@ -101,38 +104,38 @@ class ComplexLinearRNNModel(Seq2SeqModel):
         return y
     
 
-class S4DModel(Seq2SeqModel):
-    def __init__(self, hid_dim, output_dim):
-        super().__init__()
-        self.rnn = S4D(hid_dim)
-        self.output = nn.Linear(hid_dim, output_dim)
+# class S4DModel(Seq2SeqModel):
+#     def __init__(self, hid_dim, output_dim):
+#         super().__init__()
+#         self.rnn = S4D(hid_dim)
+#         self.output = nn.Linear(hid_dim, output_dim)
 
-    def forward(self, x):
-        # Input (B,L,H)
+#     def forward(self, x):
+#         # Input (B,L,H)
 
-        x = x.permute(0,2,1)
-        # (B,H,L)
-        y = self.rnn(x)[0]
-        y = y.permute(0,2,1)
+#         x = x.permute(0,2,1)
+#         # (B,H,L)
+#         y = self.rnn(x)[0]
+#         y = y.permute(0,2,1)
 
-        y = self.output(y)
+#         y = self.output(y)
 
-        return y
+#         return y
     
-class S4Model(Seq2SeqModel):
-    def __init__(self, hid_dim, output_dim):
-        super().__init__()
-        self.rnn = S4(hid_dim)
-        self.output = nn.Linear(hid_dim, output_dim)
+# class S4Model(Seq2SeqModel):
+#     def __init__(self, hid_dim, output_dim):
+#         super().__init__()
+#         self.rnn = S4(hid_dim)
+#         self.output = nn.Linear(hid_dim, output_dim)
 
-    def forward(self, x):
-        # Input (B,L,H)
+#     def forward(self, x):
+#         # Input (B,L,H)
 
-        x = x.permute(0,2,1)
-        # (B,H,L)
-        y = self.rnn(x)[0]
-        y = y.permute(0,2,1)
+#         x = x.permute(0,2,1)
+#         # (B,H,L)
+#         y = self.rnn(x)[0]
+#         y = y.permute(0,2,1)
 
-        y = self.output(y)
+#         y = self.output(y)
 
-        return y
+#         return y
