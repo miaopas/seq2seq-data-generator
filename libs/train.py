@@ -12,7 +12,7 @@ from datetime import datetime
 from ml_collections import FrozenConfigDict
 from libs.lfgenerator import Shift
 import numpy as np
-from libs.seq2seq_model import S4DModel, S4Model
+# from libs.seq2seq_model import S4DModel, S4Model
 
 def train_model(name, model, input, output, train_test_split, epochs=300, batch_size=128, check_point_monitor='valid_loss', devices=4, call_backs=None):
     """_summary_

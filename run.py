@@ -1,3 +1,4 @@
-from libs.train import *
+# from libs.train import *
+from libs.train_with_tune import *
 
-shift_s4()
+tune_linear_rnn()
