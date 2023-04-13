@@ -1,7 +1,9 @@
 import pytorch_lightning as pl
 import torch
 from torch import nn
-from libs.layers import LinearRNN, ComplexLinearRNN
+from libs.layers import LinearRNN, ComplexLinearRNN, LinearTCN
+from libs.tcn import TemporalConvNet
+
 # from libs.s4d import S4D
 # from libs.s4 import S4
 
@@ -103,6 +105,38 @@ class ComplexLinearRNNModel(Seq2SeqModel):
 
         return y
     
+
+class TCNModel(Seq2SeqModel):
+    # def __init__(self, input_size, output_size, num_channels, kernel_size, dropout):
+    def __init__(self, config):
+        super(TCNModel, self).__init__(config)
+
+        channel_list = [config["channels"] for _ in range(config["layers"])]
+        self.tcn = TemporalConvNet(config['input_dim'],channel_list, kernel_size=config["kernel_size"])
+        self.linear = nn.Linear(channel_list[-1], config["output_dim"])
+        self.init_weights()
+
+    def init_weights(self):
+        self.linear.weight.data.normal_(0, 0.01)
+
+    def forward(self, x):
+        if len(x.shape) ==2:
+            x = x.unsqueeze(0)
+        x = x.permute(0,2,1)
+        y1 = self.tcn(x)
+        y1 = y1.permute(0,2,1)
+        return self.linear(y1)
+
+
+class LinearTCNModel(Seq2SeqModel):
+    def __init__(self,config):
+        super().__init__(config)
+        self.tcn = LinearTCN(config['input_dim'], config["output_dim"], config["channels"], config["layers"])
+
+    def forward(self, x):
+        y = self.tcn(x)
+
+        return y
 
 # class S4DModel(Seq2SeqModel):
 #     def __init__(self, hid_dim, output_dim):
