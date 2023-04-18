@@ -1,3 +1,5 @@
-from libs.train import shift_rnn
+# from libs.train import *
+from libs.train_with_tune import *
 
-shift_rnn()
+tune_linear_cnn()
+# train_linear_cnn()
