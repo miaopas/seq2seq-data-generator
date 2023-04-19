@@ -14,9 +14,9 @@ from pytorch_lightning.loggers import TensorBoardLogger, WandbLogger
 import os
 from libs.seq2seq_model import RNNModel, LinearRNNModel, TCNModel, LinearTCNModel
 from math import floor
-from libs.lfgenerator import Shift, ExpPeak
+from libs.lfgenerator import Shift, ExpPeak, TwoPart
 
-def data_process(input, output, train_test_split, batch_size=128):
+def data_process(name, input, output, train_test_split, batch_size=128):
     if input is not None:
     # If input not provided then skip this part
         if not isinstance(input, torch.Tensor):
@@ -36,12 +36,19 @@ def data_process(input, output, train_test_split, batch_size=128):
         train_loader = None
         valid_loader = None
     
-    return train_loader, valid_loader
+    # train_loader.__class__.__repr__ = lambda _: name
 
-def train_model(config, model, data_loaders, epochs, tune=True):
+    from typing import Tuple
+    class Tuple_with_Name(Tuple):
+        def __repr__(self) -> str:
+            return name
+        
+    return Tuple_with_Name((train_loader, valid_loader))
+
+def train_model(config, model, epochs, tune=True):
     
-    model = model(config)
-    train_loader, valid_loader = data_loaders
+    model = model(config['model'])
+    train_loader, valid_loader = config['data']
     
 
     lr_monitor = LearningRateMonitor(logging_interval='epoch')
@@ -51,8 +58,9 @@ def train_model(config, model, data_loaders, epochs, tune=True):
                                         filename="{epoch:02d}-{valid_loss:.2e}") 
 
     tune_report = TuneReportCallback(
-                {
-                    "loss": "valid_loss",
+                {   
+                    "train_loss": "train_loss",
+                    "valid_loss": "valid_loss",
                 },
                 on="validation_end")
     if tune:
@@ -76,7 +84,7 @@ def train_model(config, model, data_loaders, epochs, tune=True):
     trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=valid_loader)
 
 
-def tune_model(name, model, config, parameter_columns, data_loaders, epochs, resources_per_trial):
+def tune_model(name, model, config, parameter_columns, epochs, resources_per_trial):
     """_summary_
 
     Args:
@@ -89,10 +97,10 @@ def tune_model(name, model, config, parameter_columns, data_loaders, epochs, res
     
     reporter = CLIReporter(
         parameter_columns=parameter_columns,
-        metric_columns=["loss", "training_iteration"])
+        metric_columns=["train_loss", "valid_loss", "training_iteration"])
 
     train_fn_with_parameters = tune.with_parameters(train_model,
-                                                    model=model, data_loaders=data_loaders, epochs=epochs)
+                                                    model=model, epochs=epochs)
     trainable_with_gpu = tune.with_resources(train_fn_with_parameters, {"gpu":1})
    
     tuner = tune.Tuner(
@@ -109,34 +117,54 @@ def tune_model(name, model, config, parameter_columns, data_loaders, epochs, res
         param_space=config,
     )
     results = tuner.fit()
+    import pickle
+    with open('results.pkl', 'wb') as f:
+        pickle.dump(results, f)
     # print("Best hyperparameters found were: ", results.get_best_result().config)
 
 
 def tune_linear_rnn():
+    # shifts = [10,20,30,40]
+    # dataloaders = []
+    # for shift in shifts:
+    #     x, y = Shift({'input_dim':1, 'path_len':128 ,'shift':[shift], 'data_num':25600*2}).generate()
+    #     data_loader = data_process(f'Shift_{shift}', x,y,train_test_split=0.8, batch_size=256)
+    #     dataloaders.append(data_loader)
+
+    centers = [2,4,6,8]
+    sigmas =  [8,8,8,8]
+    dataloaders = []
+    for center, sigma in zip(centers, sigmas):
+        x, y = TwoPart({'input_dim':1, 'path_len':128 ,'centers':[[center]], 'sigmas': [[sigma]], 'data_num':25600*2}).generate()
+        data_loader = data_process(f'TwoPart_{center}', x,y,train_test_split=0.8, batch_size=256)
+        dataloaders.append(data_loader)
+
+    model = LinearRNNModel
 
     # Set the configurations 
     config = {'name': 'tune_linear_rnn',
-        'input_dim': 1, 'output_dim':1, 'loss': nn.MSELoss(), # This should be fixed
+        
 
-         'optim': 'Adam', 'lr': 1e-3,
+        'data': tune.grid_search(dataloaders),
 
-        'hid_dim': tune.grid_search([8, 16, 32, 64])   # This is a parameter list for the model
+        'model':{'input_dim': 1, 'output_dim':1, 'loss': nn.MSELoss(), # This should be fixed
+
+        'optim': 'Adam', 'lr': 1e-3, 'hid_dim': tune.grid_search([8, 16, 32, 64])} # This is a parameter list for the model
+          
     }
-    parameter_columns = ["hid_dim"]
+    parameter_columns = ["model/hid_dim", "data"]
 
-    model = LinearRNNModel
-    x, y = Shift({'input_dim':1, 'path_len':128 ,'shift':[10], 'data_num':25600}).generate()
-
-    data_loaders = data_process(x,y,train_test_split=0.8, batch_size=128)
+    
+    
     
     # The devices to be used
-    os.environ["CUDA_VISIBLE_DEVICES"] ="0,2,3"
+    os.environ["CUDA_VISIBLE_DEVICES"] ="0,1,2,3"
 
     # Number of GPU per trial. Can set to one to see usage first.  Since for this set up the usage is about 35%, so we have set can run two experiments on a GPU at the same time.
     gpus_per_trial = 0.5
     resources_per_trial = {"cpu": 4, "gpu": gpus_per_trial}
 
-    tune_model("tune_linear_rnn", model, config, parameter_columns, data_loaders, epochs=300, resources_per_trial=resources_per_trial)
+    tune_model("tune_linear_rnn", model, config, parameter_columns, epochs=300, resources_per_trial=resources_per_trial)
    
 
 def tune_cnn():

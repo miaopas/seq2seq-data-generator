@@ -30,7 +30,7 @@ class Seq2SeqModel(pl.LightningModule):
         scheduler = {
                         "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer), 
                         "interval": "epoch",
-                        "frequency": 1,
+                        "frequency": 10,
                         "monitor": "train_loss_epoch"
                     }
         # return {"optimizer": optimizer}

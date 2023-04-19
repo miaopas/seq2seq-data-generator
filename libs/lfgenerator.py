@@ -90,11 +90,14 @@ class LFGenGenerator(AbstractGenerator):
         raise NotImplementedError
 
     def generate_inputs(self, batch_size, path_len):
-        random = 0.1 * np.random.normal(size=(
-            batch_size,
+        # random = 0.1 * np.random.normal(size=(
+        #     batch_size,
+        #     path_len,
+        #     self.config['input_dim'],
+        # ))
+        random = np.random.rand(batch_size,
             path_len,
-            self.config['input_dim'],
-        ))
+            self.config['input_dim'])
         return random
 
     def generate_outputs(self, inputs):
@@ -140,6 +143,9 @@ class Shift(LFGenGenerator):
         config.update({'dt':1, 'shift':[2]})
         
         return config
+
+    def __repr__(self) -> str:
+        return f"Shift_{self.config['shift']}"
 
     def rho(self, t, s):
         assert self.config['input_dim'] == len(self.config['shift']), "dimension not match"
