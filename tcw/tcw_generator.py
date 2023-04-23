@@ -22,28 +22,47 @@ def dataset_generator(data, length, train_test_ratio, overlap_ratio = 0, sliding
     test : nparray, (batch, length, n_dim = 1)
 
     '''
-    # for univariable
     if overlap_ratio != 0 and sliding_window == True:
         raise ValueError('Use overlap_ratio OR sliding_window')
     n_dim = data.ndim
-    max_len = data.shape[0]
-    dataset = []
+    
+    # splite train and test, data[:split] for train, data[split:] for test
+    split = int(train_test_ratio*data.shape[0]) 
+    train_data = data[:split]
+    test_data = data[split:]
+    train = []
+    test = []
+    
+    # overlap in train dataset
     start  = 0
     if sliding_window:
-        while start+length < max_len:
-            dataset.append(data[int(start):int(start+length)])
+        while start+length < train_data.shape[0]:
+            train.append(data[int(start):int(start+length)])
             start += 1
     else:
-        while start+length < max_len:
-            dataset.append(data[int(start):int(start+length)])
+        while start+length < train_data.shape[0]:
+            train.append(data[int(start):int(start+length)])
             start = int(start+ length * (1-overlap_ratio))        
-    dataset = np.array(dataset)
+    train = np.array(train)
+    
+    # overlap in test dataset
+    start  = 0
+    if sliding_window:
+        while start+length < test_data.shape[0]:
+            test.append(data[int(start):int(start+length)])
+            start += 1
+    else:
+        while start+length < test_data.shape[0]:
+            test.append(data[int(start):int(start+length)])
+            start = int(start+ length * (1-overlap_ratio))        
+    test = np.array(test)
+    
     # shuffle
-    np.random.shuffle(dataset)
-    # train_test split
-    train = dataset[:int(train_test_ratio*dataset.shape[0]),:]
+    np.random.shuffle(train)
+    np.random.shuffle(test)
+    
+    # expand dim
     train = np.expand_dims(train, axis = -1)
-    test = dataset[int(train_test_ratio*dataset.shape[0]):,:]
     test = np.expand_dims(test, axis = -1)
     return train, test
 
