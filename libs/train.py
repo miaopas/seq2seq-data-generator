@@ -309,23 +309,86 @@ def train_3w(
             callbacks=default_callbacks,
         )
 
-    model.eval()
-    loss = 0
-    for x, y in train_loader:
-        # print(x.shape, y.shape)
-        # print("input", torch.isnan(x))
-        # print("input", np.linalg.norm(x))
-        # print(sum(model(x)))
-        # print("pred", model(x))
-        loss_tmp = torch.nn.MSELoss()(model(x), y)
-        # print("loss_tmp", loss_tmp)
-        loss += loss_tmp
-        # exit()
+    print("Start training")
 
-    # print(loss / len(train_loader))
+    trainer.fit(
+        model=model, train_dataloaders=train_loader, val_dataloaders=valid_loader
+    )
 
-    # Validation before training
-    # trainer.validate(model=model, dataloaders=train_loader)
+    return trainer.validate(model=model, dataloaders=valid_loader)
+
+
+def train_tcw(
+    name,
+    model,
+    x_train,
+    y_train,
+    x_test,
+    y_test,
+    epochs=300,
+    batch_size=128,
+    check_point_monitor="valid_loss",
+    devices=1,
+    call_backs=None,
+    dtype=torch.float64,
+):
+    if not isinstance(x_train, torch.Tensor):
+        x_train = torch.tensor(x_train, dtype=dtype)
+    if not isinstance(y_train, torch.Tensor):
+        y_train = torch.tensor(y_train, dtype=dtype)
+    if not isinstance(x_test, torch.Tensor):
+        x_test = torch.tensor(x_test, dtype=dtype)
+    if not isinstance(y_test, torch.Tensor):
+        y_test = torch.tensor(y_test, dtype=dtype)
+
+    # print(x_train.shape, y_train.shape, x_test.shape, y_test.shape)
+    train_dataset = torch.utils.data.TensorDataset(x_train, y_train)
+    test_dataset = torch.utils.data.TensorDataset(x_test, y_test)
+
+    train_loader = torch.utils.data.DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        drop_last=True,
+        num_workers=os.cpu_count(),
+        pin_memory=True,
+    )
+    valid_loader = torch.utils.data.DataLoader(
+        test_dataset,
+        batch_size=batch_size,
+        drop_last=True,
+        num_workers=os.cpu_count(),
+        pin_memory=True,
+    )
+
+    lr_monitor = LearningRateMonitor(logging_interval="epoch")
+    now = datetime.now().strftime("%H:%M:%S__%m-%d")
+    checkpoint_callback = ModelCheckpoint(
+        save_top_k=5,
+        monitor=check_point_monitor,
+        filename=name + "-{epoch:02d}-{valid_loss:.2e}",
+    )
+
+    default_callbacks = [checkpoint_callback, lr_monitor] + call_backs
+
+    if devices == 1:
+        trainer = Trainer(
+            accelerator="gpu",
+            devices=[3],
+            max_epochs=epochs,
+            precision=64,
+            logger=TensorBoardLogger("runs", name=name),
+            callbacks=default_callbacks,
+        )
+    else:
+        trainer = Trainer(
+            accelerator="gpu",
+            devices=devices,
+            strategy=DDPStrategy(find_unused_parameters=False),
+            max_epochs=epochs,
+            precision=64,
+            logger=TensorBoardLogger("runs", name=name),
+            callbacks=default_callbacks,
+        )
 
     print("Start training")
 
@@ -333,4 +396,4 @@ def train_3w(
         model=model, train_dataloaders=train_loader, val_dataloaders=valid_loader
     )
 
-    return trainer.validate(model=model, dataloaders=train_loader)
+    return trainer.validate(model=model, dataloaders=valid_loader)

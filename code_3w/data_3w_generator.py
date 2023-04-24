@@ -129,6 +129,6 @@ if __name__ == "__main__":
     train_input, train_output, test_input, test_output = w3_generator(
         900, 0.7, overlap_ratio=0
     )
-    # print(train_input.shape) # (9014, 900, 3)
+    # print(train_input.shape) # (9014, 900, 3), remove nan to (8146, 900, 3)
     has_nan = torch.any(torch.isnan(torch.Tensor(train_input)))
     print(has_nan)  # expect to be False
