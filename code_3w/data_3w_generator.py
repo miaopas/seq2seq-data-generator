@@ -1,13 +1,10 @@
 # -*- coding: utf-8 -*-
 # 3w dataset generator for a binary classification task with multivariable input
-# Please clone the repository: https://github.com/petrobras/3W.git
-# Original dataset can be find under dataset directory,
-# folder 0 contains nomal condition, while folder 4 represent flow instability fault.
-# Please put the script 3w_generator.py under 3W-main, outside dataset folder.
 import numpy as np
 import pandas as pd
 import os
 
+import torch
 
 normal_path = "/home/shida/3W/dataset/0"
 inst_path = "/home/shida/3W/dataset/4"  # instability data
@@ -45,25 +42,35 @@ def overlap_window(data, length, overlap_ratio=0, sliding_window=False):
 
 
 def read_files(filepath, filelist, length, overlap_ratio=0, sliding_window=False):
+    valid_file_count = 0
     for idx, file in enumerate(filelist):
         path = os.path.join(filepath, file)
         data = pd.read_csv(path, sep=",")
-        data = data[["P-TPT", "T-TPT", "P-MON-CKP"]].dropna()
+        nan_idx = []
 
         p_tpt = data["P-TPT"]
         t_tpt = data["T-TPT"]
         p_ckp = data["P-MON-CKP"]
 
-        p_tpt = overlap_window(p_tpt, length, overlap_ratio, sliding_window)
-        t_tpt = overlap_window(t_tpt, length, overlap_ratio, sliding_window)
-        p_ckp = overlap_window(p_ckp, length, overlap_ratio, sliding_window)
-
-        if idx == 0:
-            train = np.stack([p_tpt, t_tpt, p_ckp], axis=2)
+        if (
+            np.isnan(p_tpt).sum() > 0
+            or np.isnan(t_tpt).sum() > 0
+            or np.isnan(p_ckp).sum() > 0
+        ):
+            # nan_idx.append(idx) # if want to print idx for file with nan values
+            pass  # if have nan, skip this file
 
         else:
-            temp = np.stack([p_tpt, t_tpt, p_ckp], axis=2)
-            train = np.concatenate((train, temp), axis=0)
+            p_tpt = overlap_window(p_tpt, length, overlap_ratio, sliding_window)
+            t_tpt = overlap_window(t_tpt, length, overlap_ratio, sliding_window)
+            p_ckp = overlap_window(p_ckp, length, overlap_ratio, sliding_window)
+            valid_file_count += 1
+            if valid_file_count == 1:
+                train = np.stack([p_tpt, t_tpt, p_ckp], axis=2)
+
+            else:
+                temp = np.stack([p_tpt, t_tpt, p_ckp], axis=2)
+                train = np.concatenate((train, temp), axis=0)
 
     return train
 
@@ -123,3 +130,5 @@ if __name__ == "__main__":
         900, 0.7, overlap_ratio=0
     )
     # print(train_input.shape) # (9014, 900, 3)
+    has_nan = torch.any(torch.isnan(torch.Tensor(train_input)))
+    print(has_nan)  # expect to be False
