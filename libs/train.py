@@ -260,7 +260,7 @@ def train_3w(
     if not isinstance(y_test, torch.Tensor):
         y_test = torch.tensor(y_test, dtype=dtype)
 
-    print(x_train.shape, y_train.shape, x_test.shape, y_test.shape)
+    # print(x_train.shape, y_train.shape, x_test.shape, y_test.shape)
     train_dataset = torch.utils.data.TensorDataset(x_train, y_train)
     test_dataset = torch.utils.data.TensorDataset(x_test, y_test)
 
@@ -313,19 +313,19 @@ def train_3w(
     loss = 0
     for x, y in train_loader:
         # print(x.shape, y.shape)
-        print("input", torch.isnan(x))
-        print("input", np.linalg.norm(x))
+        # print("input", torch.isnan(x))
+        # print("input", np.linalg.norm(x))
         # print(sum(model(x)))
-        print("pred", model(x))
+        # print("pred", model(x))
         loss_tmp = torch.nn.MSELoss()(model(x), y)
-        print("loss_tmp", loss_tmp)
+        # print("loss_tmp", loss_tmp)
         loss += loss_tmp
-        exit()
+        # exit()
 
-    print(loss / len(train_loader))
+    # print(loss / len(train_loader))
 
     # Validation before training
-    trainer.validate(model=model, dataloaders=train_loader)
+    # trainer.validate(model=model, dataloaders=train_loader)
 
     print("Start training")
 

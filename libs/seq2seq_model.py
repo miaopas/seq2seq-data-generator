@@ -96,11 +96,7 @@ class RNNModel(Seq2SeqModel):
 
     def forward(self, x):
         y = self.rnn(x)[0]
-        print("h", sum(sum(y)))
-        print(self.dense.weight.dtype)
-        print(y.dtype)
         y = self.dense(y)
-        print("output", sum(sum(y)))
         output = y
 
         if self.return_sequence:
