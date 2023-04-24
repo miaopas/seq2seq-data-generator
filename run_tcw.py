@@ -34,10 +34,11 @@ if __name__ == "__main__":
         data, length=100, train_test_ratio=0.7, sliding_window=True
     )
 
-    train_in = np.expand_dims(train[:, :T, :], -1)
-    train_output = np.expand_dims(train[:, -T:, :], -1)
-    test_in = np.expand_dims(test[:, :T, :], -1)
-    test_output = np.expand_dims(test[:, -T:, :], -1)
+    train_in = train[:, :T, :]
+    train_output = train[:, -T:, :]
+    test_in = test[:, :T, :]
+    test_output = test[:, -T:, :]
+    print(train_in.shape, train_output.shape, test_in.shape, test_output.shape)
 
     activation = "tanh"  # Tanh RNN
     hid_dim = 128
