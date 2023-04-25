@@ -52,7 +52,7 @@ if __name__ == "__main__":
     dtype = torch.float32
 
     train_3w(
-        f"{activation}RNN",
+        f"{activation}RNN_3w",
         RNNModel(
             config=config,
             hid_dim=hid_dim,
