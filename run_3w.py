@@ -3,7 +3,7 @@ import time
 from pathlib import Path
 
 from libs.train import *
-from code_3w.data_3w_generator import w3_generator
+from dataprepare_3w.data_3w_generator import w3_generator
 
 # from libs.train_with_tune import *
 
