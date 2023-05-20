@@ -131,13 +131,13 @@ def tune_linear_rnn():
     #     data_loader = data_process(f'Shift_{shift}', x,y,train_test_split=0.8, batch_size=256)
     #     dataloaders.append(data_loader)
 
-    centers = [2,4,6,8]
-    sigmas =  [8,8,8,8]
-    dataloaders = []
-    for center, sigma in zip(centers, sigmas):
-        x, y = TwoPart({'input_dim':1, 'path_len':128 ,'centers':[[center]], 'sigmas': [[sigma]], 'data_num':25600*2}).generate()
-        data_loader = data_process(f'TwoPart_{center}', x,y,train_test_split=0.8, batch_size=256)
-        dataloaders.append(data_loader)
+    # centers = [2,4,6,8]
+    # sigmas =  [8,8,8,8]
+    # dataloaders = []
+    # for center, sigma in zip(centers, sigmas):
+    #     x, y = TwoPart({'input_dim':1, 'path_len':128 ,'centers':[[center]], 'sigmas': [[sigma]], 'data_num':25600*2}).generate()
+    #     data_loader = data_process(f'TwoPart_{center}', x,y,train_test_split=0.8, batch_size=256)
+    #     dataloaders.append(data_loader)
 
     model = LinearRNNModel
 
@@ -237,3 +237,26 @@ def tune_linear_cnn():
     resources_per_trial = {"cpu": 3, "gpu": gpus_per_trial}
 
     tune_model("tune_linear_cnn", model, config, parameter_columns, data_loaders, epochs=300, resources_per_trial=resources_per_trial)
+
+
+def train_linear_rnn():
+    model = LinearRNNModel
+    x, y = Shift({'input_dim':1, 'path_len':128 ,'shift':[10], 'data_num':25600}).generate()
+    data_loaders = data_process(f'TwoPart_10', x,y,train_test_split=0.8, batch_size=128)
+
+
+    config = {'name': 'train_linear_rnn',
+        
+
+        'data': tune.grid_search(data_loaders),
+
+        'model':{'input_dim': 1, 'output_dim':1, 'loss': nn.MSELoss(), # This should be fixed
+
+        'optim': 'Adam', 'lr': 1e-3, 'hid_dim': tune.grid_search([64])} # This is a parameter list for the model
+          
+    }
+
+    
+
+    os.environ["CUDA_VISIBLE_DEVICES"] ="0,1,2"
+    train_model(config, model, 400, tune=False)
