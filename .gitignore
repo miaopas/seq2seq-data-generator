@@ -1,6 +1,8 @@
 # Byte-compiled / optimized / DLL files
 
+.gitignore
 ray_results
+*.npy
 
 __pycache__/
 *.py[cod]
@@ -133,3 +135,7 @@ dmypy.json
 
 
 runs
+
+data
+
+.history/
