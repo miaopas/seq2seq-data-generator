@@ -20,7 +20,7 @@ from pytorch_lightning.loggers import TensorBoardLogger, WandbLogger
 import os
 from libs.seq2seq_model import RNNModel, LinearRNNModel, TCNModel, LinearTCNModel
 from math import floor
-from libs.lfgenerator import Shift, ExpPeak, TwoPart
+from libs.lfgenerator import Shift, ExpPeak, TwoPart, LorenzRandFGenerator
 
 
 def data_process(name, input, output, train_test_split, batch_size=128):
@@ -149,7 +149,6 @@ def tune_linear_rnn():
     #     data_loader = data_process(f'Shift_{shift}', x,y,train_test_split=0.8, batch_size=256)
     #     dataloaders.append(data_loader)
 
-<<<<<<< HEAD
     # centers = [2,4,6,8]
     # sigmas =  [8,8,8,8]
     # dataloaders = []
@@ -157,25 +156,6 @@ def tune_linear_rnn():
     #     x, y = TwoPart({'input_dim':1, 'path_len':128 ,'centers':[[center]], 'sigmas': [[sigma]], 'data_num':25600*2}).generate()
     #     data_loader = data_process(f'TwoPart_{center}', x,y,train_test_split=0.8, batch_size=256)
     #     dataloaders.append(data_loader)
-=======
-    centers = [2, 4, 6, 8]
-    sigmas = [8, 8, 8, 8]
-    dataloaders = []
-    for center, sigma in zip(centers, sigmas):
-        x, y = TwoPart(
-            {
-                "input_dim": 1,
-                "path_len": 128,
-                "centers": [[center]],
-                "sigmas": [[sigma]],
-                "data_num": 25600 * 2,
-            }
-        ).generate()
-        data_loader = data_process(
-            f"TwoPart_{center}", x, y, train_test_split=0.8, batch_size=256
-        )
-        dataloaders.append(data_loader)
->>>>>>> 2bfd8e26a86246b9c06de15e08c7571a8de03c97
 
     model = LinearRNNModel
 
@@ -306,7 +286,6 @@ def tune_linear_cnn():
     gpus_per_trial = 0.3
     resources_per_trial = {"cpu": 3, "gpu": gpus_per_trial}
 
-<<<<<<< HEAD
     tune_model("tune_linear_cnn", model, config, parameter_columns, data_loaders, epochs=300, resources_per_trial=resources_per_trial)
 
 
@@ -319,26 +298,34 @@ def train_linear_rnn():
     config = {'name': 'train_linear_rnn',
         
 
-        'data': tune.grid_search(data_loaders),
+        'data': data_loaders,
 
         'model':{'input_dim': 1, 'output_dim':1, 'loss': nn.MSELoss(), # This should be fixed
 
-        'optim': 'Adam', 'lr': 1e-3, 'hid_dim': tune.grid_search([64])} # This is a parameter list for the model
+        'optim': 'Adam', 'lr': 1e-3, 'hid_dim': 64} # This is a parameter list for the model
           
     }
 
-    
-
     os.environ["CUDA_VISIBLE_DEVICES"] ="0,1,2"
     train_model(config, model, 400, tune=False)
-=======
-    tune_model(
-        "tune_linear_cnn",
-        model,
-        config,
-        parameter_columns,
-        data_loaders,
-        epochs=300,
-        resources_per_trial=resources_per_trial,
-    )
->>>>>>> 2bfd8e26a86246b9c06de15e08c7571a8de03c97
+
+
+def train_rnn():
+    model = RNNModel
+    x, y = LorenzRandFGenerator({'n_init':512, 'K':1, 'J':10,'path_len':128, 'only_terminal':False, 'data_num':25600}).generate()
+    data_loaders = data_process(f'lorenz_10', x,y,train_test_split=0.8, batch_size=128)
+
+
+    config = {'name': 'train_rnn',
+        
+
+        'data': data_loaders,
+
+        'model':{'input_dim': 1, 'output_dim':1, 'num_layers':1, 'loss': nn.MSELoss(), # This should be fixed
+
+        'optim': 'Adam', 'lr': 1e-3, 'hid_dim': 128} # This is a parameter list for the model
+          
+    }
+
+    os.environ["CUDA_VISIBLE_DEVICES"] ="0,1,2,3"
+    train_model(config, model, 400, tune=False)

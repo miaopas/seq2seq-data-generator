@@ -4,8 +4,8 @@ from torch import nn
 from libs.layers import LinearRNN, ComplexLinearRNN, LinearTCN
 from libs.tcn import TemporalConvNet
 
-# from libs.s4d import S4D
-# from libs.s4 import S4
+from libs.s4d import S4D
+from libs.s4 import S4
 
 
 class Seq2SeqModel(pl.LightningModule):
@@ -26,7 +26,7 @@ class Seq2SeqModel(pl.LightningModule):
         elif self.optim == "SGD":
             optimizer = torch.optim.SGD(self.parameters(), lr=self.lr)
         else:
-            optimizer = torch.optim.SparseAdam(self.parameters(), lr=self.lr)
+            optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr)
 
         scheduler = {
             "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer),
@@ -71,25 +71,19 @@ class RNNModel(Seq2SeqModel):
     def __init__(
         self,
         config,
-        hid_dim,
-        num_layers,
-        input_dim,
-        output_dim,
         return_sequence=True,
         dtype=64,
     ):
         super().__init__(config)
         self.rnn = nn.RNN(
-            input_size=input_dim,
-            hidden_size=hid_dim,
-            num_layers=num_layers,
+            input_size=config["input_dim"],
+            hidden_size=config["hid_dim"],
+            num_layers=config["num_layers"],
             batch_first=True,
-            # dtype=torch.float64 if dtype == 64 else torch.float32,
         )
         self.dense = nn.Linear(
-            hid_dim,
-            output_dim,
-            # dtype=torch.float64 if dtype == 64 else torch.float32,
+            config["hid_dim"],
+            config["output_dim"],
         )
 
         self.return_sequence = return_sequence
@@ -185,23 +179,27 @@ class LinearTCNModel(Seq2SeqModel):
         return y
 
 
-# class S4DModel(Seq2SeqModel):
-#     def __init__(self, hid_dim, output_dim):
-#         super().__init__()
-#         self.rnn = S4D(hid_dim)
-#         self.output = nn.Linear(hid_dim, output_dim)
+class S4DModel(Seq2SeqModel):
+    def __init__(self, hid_dim, input_dim, output_dim, config):
+        super().__init__(config)
+        self.rnn = S4D(hid_dim)
+        
+        self.input = nn.Linear(input_dim, hid_dim)
+        self.output = nn.Linear(hid_dim, output_dim)
 
-#     def forward(self, x):
-#         # Input (B,L,H)
+    def forward(self, x):
+        # Input (B,L,H)
 
-#         x = x.permute(0,2,1)
-#         # (B,H,L)
-#         y = self.rnn(x)[0]
-#         y = y.permute(0,2,1)
+        x = self.input(x)
 
-#         y = self.output(y)
+        x = x.permute(0,2,1)
+        # (B,H,L)
+        y = self.rnn(x)[0]
+        y = y.permute(0,2,1)
 
-#         return y
+        y = self.output(y)
+
+        return y
 
 # class S4Model(Seq2SeqModel):
 #     def __init__(self, hid_dim, output_dim):

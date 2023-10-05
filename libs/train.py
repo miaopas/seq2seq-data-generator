@@ -16,8 +16,11 @@ from datetime import datetime
 from ml_collections import FrozenConfigDict
 from libs.lfgenerator import Shift
 import numpy as np
+from torch.utils.data import ConcatDataset
 
 # from libs.seq2seq_model import S4DModel, S4Model
+
+
 
 
 def train_model(
@@ -56,6 +59,10 @@ def train_model(
         train_dataset, valid_dataset = torch.utils.data.random_split(
             dataset, [train_size, test_size]
         )
+
+        train_dataset = ConcatDataset([train_dataset]*100)
+        valid_dataset = ConcatDataset([valid_dataset]*100)
+
         train_loader = torch.utils.data.DataLoader(
             train_dataset,
             batch_size=batch_size,
@@ -73,6 +80,9 @@ def train_model(
     else:
         train_loader = None
         valid_loader = None
+    import itertools
+
+   
 
     lr_monitor = LearningRateMonitor(logging_interval="epoch")
     now = datetime.now().strftime("%H:%M:%S__%m-%d")
@@ -82,7 +92,12 @@ def train_model(
         filename=name + "-{epoch:02d}-{valid_loss:.2e}",
     )
 
-    default_callbacks = [checkpoint_callback, lr_monitor] + call_backs
+    if call_backs:
+        default_callbacks = [checkpoint_callback, lr_monitor] + call_backs
+    else:
+        default_callbacks = [checkpoint_callback, lr_monitor]
+
+
 
     if devices == 1:
         trainer = Trainer(
@@ -397,3 +412,6 @@ def train_tcw(
     )
 
     return trainer.validate(model=model, dataloaders=valid_loader)
+
+
+
